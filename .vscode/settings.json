@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "ehids_agent.h": "c",
+        "bpf_core_read.h": "c",
+        "common.h": "c",
+        "bpf_helpers.h": "c"
+    }
+}
