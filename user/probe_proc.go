@@ -22,22 +22,22 @@ type MProcProbe struct {
 }
 
 // 对象初始化
-func (this *MProcProbe) Init(ctx context.Context, logger *log.Logger) error {
-	this.Module.Init(ctx, logger)
-	this.Module.SetChild(this)
-	this.eventMaps = make([]*ebpf.Map, 0, 2)
-	this.eventFuncMaps = make(map[*ebpf.Map]IEventStruct)
+func (proc *MProcProbe) Init(ctx context.Context, logger *log.Logger) error {
+	proc.Module.Init(ctx, logger)
+	proc.Module.SetChild(proc)
+	proc.eventMaps = make([]*ebpf.Map, 0, 2)
+	proc.eventFuncMaps = make(map[*ebpf.Map]IEventStruct)
 	return nil
 }
 
-func (this *MProcProbe) Start() error {
-	if err := this.start(); err != nil {
+func (proc *MProcProbe) Start() error {
+	if err := proc.start(); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (this *MProcProbe) start() error {
+func (proc *MProcProbe) start() error {
 
 	// fetch ebpf assets
 	javaBuf, err := assets.Asset("user/bytecode/proc_kern.o")
@@ -46,20 +46,20 @@ func (this *MProcProbe) start() error {
 	}
 
 	// setup the managers
-	this.setupManagers()
+	proc.setupManagers()
 
 	// initialize the bootstrap manager
-	if err := this.bpfManager.InitWithOptions(bytes.NewReader(javaBuf), this.bpfManagerOptions); err != nil {
+	if err := proc.bpfManager.InitWithOptions(bytes.NewReader(javaBuf), proc.bpfManagerOptions); err != nil {
 		return errors.Wrap(err, "couldn't init manager")
 	}
 
 	// start the bootstrap manager
-	if err := this.bpfManager.Start(); err != nil {
+	if err := proc.bpfManager.Start(); err != nil {
 		return errors.Wrap(err, "couldn't start bootstrap manager")
 	}
 
 	// 加载map信息，map对应events decode表。
-	err = this.initDecodeFun()
+	err = proc.initDecodeFun()
 	if err != nil {
 		return err
 	}
@@ -67,15 +67,15 @@ func (this *MProcProbe) start() error {
 	return nil
 }
 
-func (this *MProcProbe) Close() error {
-	if err := this.bpfManager.Stop(manager.CleanAll); err != nil {
+func (proc *MProcProbe) Close() error {
+	if err := proc.bpfManager.Stop(manager.CleanAll); err != nil {
 		return errors.Wrap(err, "couldn't stop manager")
 	}
 	return nil
 }
 
-func (this *MProcProbe) setupManagers() {
-	this.bpfManager = &manager.Manager{
+func (proc *MProcProbe) setupManagers() {
+	proc.bpfManager = &manager.Manager{
 		Probes: []*manager.Probe{
 			{
 				Section:          "kretprobe/copy_process",
@@ -91,7 +91,7 @@ func (this *MProcProbe) setupManagers() {
 		},
 	}
 
-	this.bpfManagerOptions = manager.Options{
+	proc.bpfManagerOptions = manager.Options{
 		DefaultKProbeMaxActive: 512,
 
 		VerifierOptions: ebpf.CollectionOptions{
@@ -107,28 +107,28 @@ func (this *MProcProbe) setupManagers() {
 	}
 }
 
-func (this *MProcProbe) DecodeFun(em *ebpf.Map) (IEventStruct, bool) {
-	fun, found := this.eventFuncMaps[em]
+func (proc *MProcProbe) DecodeFun(em *ebpf.Map) (IEventStruct, bool) {
+	fun, found := proc.eventFuncMaps[em]
 	return fun, found
 }
 
-func (this *MProcProbe) initDecodeFun() error {
+func (proc *MProcProbe) initDecodeFun() error {
 	//eventMap 与解码函数映射
-	procEventsMap, found, err := this.bpfManager.GetMap("ringbuf_proc")
+	procEventsMap, found, err := proc.bpfManager.GetMap("ringbuf_proc")
 	if err != nil {
 		return err
 	}
 	if !found {
 		return errors.New("cant found map:events")
 	}
-	this.eventMaps = append(this.eventMaps, procEventsMap)
-	this.eventFuncMaps[procEventsMap] = &ForkProcEvent{}
+	proc.eventMaps = append(proc.eventMaps, procEventsMap)
+	proc.eventFuncMaps[procEventsMap] = &ForkProcEvent{}
 
 	return nil
 }
 
-func (this *MProcProbe) Events() []*ebpf.Map {
-	return this.eventMaps
+func (proc *MProcProbe) Events() []*ebpf.Map {
+	return proc.eventMaps
 }
 
 func init() {

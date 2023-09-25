@@ -55,75 +55,75 @@ type Module struct {
 }
 
 // Init 对象初始化
-func (this *Module) Init(ctx context.Context, logger *log.Logger) {
-	this.ctx = ctx
-	this.logger = logger
+func (m *Module) Init(ctx context.Context, logger *log.Logger) {
+	m.ctx = ctx
+	m.logger = logger
 	return
 }
 
-func (this *Module) SetChild(module IModule) {
-	this.child = module
+func (m *Module) SetChild(module IModule) {
+	m.child = module
 }
 
-func (this *Module) Start() error {
+func (m *Module) Start() error {
 	panic("Module.Start() not implemented yet")
 }
 
-func (this *Module) Events() []*ebpf.Map {
+func (m *Module) Events() []*ebpf.Map {
 	panic("Module.Events() not implemented yet")
 }
 
-func (this *Module) DecodeFun(p *ebpf.Map) (IEventStruct, bool) {
+func (m *Module) DecodeFun(p *ebpf.Map) (IEventStruct, bool) {
 	panic("Module.DecodeFun() not implemented yet")
 }
 
-func (this *Module) Name() string {
-	return this.name
+func (m *Module) Name() string {
+	return m.name
 }
 
-func (this *Module) Run() error {
+func (m *Module) Run() error {
 	//  start
-	err := this.child.Start()
+	err := m.child.Start()
 	if err != nil {
 		return err
 	}
 
-	err = this.readEvents()
+	err = m.readEvents()
 	if err != nil {
 		return err
 	}
 
 	go func() {
-		this.run()
+		m.run()
 	}()
 	return nil
 }
-func (this *Module) Stop() error {
+func (m *Module) Stop() error {
 	return nil
 }
 
 // Stop shuts down Module
-func (this *Module) run() {
+func (m *Module) run() {
 	for {
 		select {
-		case _ = <-this.ctx.Done():
-			err := this.child.Stop()
+		case _ = <-m.ctx.Done():
+			err := m.child.Stop()
 			if err != nil {
-				this.logger.Fatalf("stop Module:%s error:%v.", this.child.Name(), err)
+				m.logger.Fatalf("stop Module:%s error:%v.", m.child.Name(), err)
 			}
 			return
 		}
 	}
 }
 
-func (this *Module) readEvents() error {
+func (m *Module) readEvents() error {
 	var errChan = make(chan error, 8)
-	for _, event := range this.child.Events() {
+	for _, event := range m.child.Events() {
 		switch {
 		case event.Type() == ebpf.RingBuf:
-			go this.ringbufEventReader(errChan, event)
+			go m.ringbufEventReader(errChan, event)
 		case event.Type() == ebpf.PerfEventArray:
-			go this.perfEventReader(errChan, event)
+			go m.perfEventReader(errChan, event)
 		default:
 			errChan <- fmt.Errorf("Not support mapType:%s , mapinfo:%s", event.Type().String(), event.String())
 		}
@@ -137,7 +137,7 @@ func (this *Module) readEvents() error {
 	}
 }
 
-func (this *Module) perfEventReader(errChan chan error, em *ebpf.Map) {
+func (m *Module) perfEventReader(errChan chan error, em *ebpf.Map) {
 	rd, err := perf.NewReader(em, os.Getpagesize())
 	if err != nil {
 		errChan <- fmt.Errorf("creating %s reader dns: %s", em.String(), err)
@@ -147,7 +147,7 @@ func (this *Module) perfEventReader(errChan chan error, em *ebpf.Map) {
 	for {
 		//判断ctx是不是结束
 		select {
-		case _ = <-this.ctx.Done():
+		case _ = <-m.ctx.Done():
 			log.Printf("readEvent recived close signal from context.Done.")
 			return
 		default:
@@ -168,18 +168,18 @@ func (this *Module) perfEventReader(errChan chan error, em *ebpf.Map) {
 		}
 
 		var result string
-		result, err = this.child.Decode(em, record.RawSample)
+		result, err = m.child.Decode(em, record.RawSample)
 		if err != nil {
 			log.Printf("this.child.decode error:%v", err)
 			continue
 		}
 
 		// 上报数据
-		this.Write(result)
+		m.Write(result)
 	}
 }
 
-func (this *Module) ringbufEventReader(errChan chan error, em *ebpf.Map) {
+func (m *Module) ringbufEventReader(errChan chan error, em *ebpf.Map) {
 	rd, err := ringbuf.NewReader(em)
 	if err != nil {
 		errChan <- fmt.Errorf("creating %s reader dns: %s", em.String(), err)
@@ -189,8 +189,8 @@ func (this *Module) ringbufEventReader(errChan chan error, em *ebpf.Map) {
 	for {
 		//判断ctx是不是结束
 		select {
-		case _ = <-this.ctx.Done():
-			this.logger.Printf("readEvent recived close signal from context.Done.")
+		case _ = <-m.ctx.Done():
+			m.logger.Printf("readEvent recived close signal from context.Done.")
 			return
 		default:
 		}
@@ -198,7 +198,7 @@ func (this *Module) ringbufEventReader(errChan chan error, em *ebpf.Map) {
 		record, err := rd.Read()
 		if err != nil {
 			if errors.Is(err, ringbuf.ErrClosed) {
-				this.logger.Println("Received signal, exiting..")
+				m.logger.Println("Received signal, exiting..")
 				return
 			}
 			errChan <- fmt.Errorf("reading from ringbuf reader: %s", err)
@@ -206,14 +206,14 @@ func (this *Module) ringbufEventReader(errChan chan error, em *ebpf.Map) {
 		}
 
 		var result string
-		result, err = this.child.Decode(em, record.RawSample)
+		result, err = m.child.Decode(em, record.RawSample)
 		if err != nil {
 			log.Printf("this.child.decode error:%v", err)
 			continue
 		}
 
 		// 上报数据
-		this.Write(result)
+		m.Write(result)
 	}
 }
 
@@ -227,13 +227,13 @@ func (e *Module) EventsDecode(payload []byte, es IEventStruct) (s string, err er
 	return
 }
 
-func (this *Module) Decode(em *ebpf.Map, b []byte) (result string, err error) {
-	es, found := this.child.DecodeFun(em)
+func (m *Module) Decode(em *ebpf.Map, b []byte) (result string, err error) {
+	es, found := m.child.DecodeFun(em)
 	if !found {
 		err = fmt.Errorf("can't found decode function :%s, address:%p", em.String(), em)
 		return
 	}
-	result, err = this.EventsDecode(b, es)
+	result, err = m.EventsDecode(b, es)
 	if err != nil {
 		return
 	}
@@ -241,9 +241,9 @@ func (this *Module) Decode(em *ebpf.Map, b []byte) (result string, err error) {
 }
 
 // 写入数据，或者上传到远程数据库，写入到其他chan 等。
-func (this *Module) Write(result string) {
-	s := fmt.Sprintf("probeName:%s, probeTpye:%s, %s", this.name, this.mType, result)
-	this.logger.Println(s)
+func (m *Module) Write(result string) {
+	s := fmt.Sprintf("probeName:%s, probeTpye:%s, %s", m.name, m.mType, result)
+	m.logger.Println(s)
 
 	err := kafka.Producer2Kafka(kafka.Broker, kafka.Topic, result)
 	if err != nil {

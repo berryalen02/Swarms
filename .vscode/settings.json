@@ -3,6 +3,15 @@
         "ehids_agent.h": "c",
         "bpf_core_read.h": "c",
         "common.h": "c",
-        "bpf_helpers.h": "c"
+        "bpf_helpers.h": "c",
+        "whitelist.h": "c",
+        "vmlinux.h": "c",
+        "bpf_tracing.h": "c",
+        "socket.h": "c",
+        "bpf.h": "c",
+        "types.h": "c",
+        "bpf_common.h": "c",
+        "string.h": "c",
+        "bpf_helper_defs.h": "c"
     }
 }

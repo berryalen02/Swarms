@@ -7,7 +7,7 @@
 #define AF_INET6 10
 struct event_t
 {
-    u64 start_ns;   //启动时间
+    u64 start_ns; // 启动时间
     u64 end_ns;
     u32 pid;
     u32 laddr;
@@ -43,6 +43,31 @@ struct
     __uint(max_entries, 10240);
 } conns SEC(".maps");
 
+// 如果不是通信白名单，返回0，事件上传
+// 如果是通信白名单，返回1，事件不上传
+static inline int task_whitelist_check(char *task)
+{
+    // 进程白名单
+    char task_whitelist[][TASK_COMM_LEN] = {
+        "swarms-agent"};
+
+    for (int i = 0; i < sizeof(task_whitelist) / sizeof(task_whitelist[0]); i++)
+    {
+        for (int j = 0; j < TASK_COMM_LEN - 1; j++)
+        {
+            if (task[j] != task_whitelist[i][j])
+            {
+                return 0;
+            }
+            if ((task[j] == '\0') && (task_whitelist[i][j] == '\0'))
+            {
+                continue;
+            }
+        }
+    }
+    return 1;
+}
+
 SEC("kprobe/tcp_set_state")
 int kprobe__tcp_set_state(struct pt_regs *ctx)
 {
@@ -66,7 +91,7 @@ int kprobe__tcp_set_state(struct pt_regs *ctx)
             bpf_map_delete_elem(&conns, &sk);
         }
 
-        //create temp conn
+        // create temp conn
         conn.flags = F_OUTBOUND;
         conn.start_ns = bpf_ktime_get_ns();
 
@@ -129,6 +154,14 @@ int kprobe__tcp_set_state(struct pt_regs *ctx)
     u32 uid = bpf_get_current_uid_gid();
     data.uid = uid;
     __builtin_memcpy(&data.task, &conn.task, sizeof(data.task));
+
+    // 进程白名单匹配
+    int check;
+    check = task_whitelist_check(data.task);
+    if (check == 1)
+    {
+        return 0;
+    }
 
     data.flags = conn.flags;
     data.rport = (u16)(data.rport);

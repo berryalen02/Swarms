@@ -41,7 +41,7 @@ func (e *UDPEvent) Decode(payload []byte) (err error) {
 	var m dns.Message
 	err = dns.UnmarshalMessage(e.packet, &m)
 	if err != nil {
-		return fmt.Errorf("failed to decode packet: %s\n", err)
+		return fmt.Errorf("failed to decode packet: %s", err)
 	}
 
 	e.ask = make([]question, len(m.Questions))

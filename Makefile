@@ -28,6 +28,7 @@ CMD_GO ?= go
 CMD_GREP ?= grep
 CMD_CAT ?= cat
 CMD_MD5 ?= md5sum
+CMD_GCC ?= gcc
 STYLE    ?= "{BasedOnStyle: Google, IndentWidth: 4}"
 
 .check_%:
@@ -181,6 +182,19 @@ KERN_SRC_PATH ?= $(if $(KERN_HEADERS),$(KERN_HEADERS),$(if $(wildcard /lib/modul
 
 BPF_NOCORE_TAG = $(subst .,_,$(KERN_RELEASE)).$(subst .,_,$(VERSION))
 
+# 暂时不考虑对ebpf程序的规则集成，一些规则会轻量级地分布在各个ebpf程序中
+# 但是需要考虑以后自定义规则的情况，比如黑白名单、阻断模块等。
+# 本来考虑用自定义bpf_helper，但是太麻烦了，不如用ebpf map，用户层做一些调整
+# 目前轻量级的模块加载框架，肯定不够用，得加功能
+# #
+# # BPF Security module file
+# #
+
+# SECURITY_MODULE_TARGETS := kern/security/whitelist
+
+# # generate bpf security modules based on SECURITY_MODULE_TARGETS
+# SECURITY_MODULE_SOURCES = ${SECURITY_MODULE_TARGETS:=_security.c}
+# SECURITY_MODULE_OBJECTS = ${SECURITY_MODULE_SOURCES:.c=.o}
 
 #
 # BPF Source file
@@ -193,6 +207,7 @@ TARGETS += kern/udp_lookup
 TARGETS += kern/java_exec
 TARGETS += kern/proc
 TARGETS += kern/bpf_call
+# TARGETS += kern/security/whitelist
 
 # Generate file name-scheme based on TARGETS
 KERN_SOURCES = ${TARGETS:=_kern.c}
@@ -244,7 +259,7 @@ help:
 	@echo "    $$ make env		# show makefile environment/variables"
 	@echo ""
 	@echo "# build"
-	@echo "    $$ make all		# build ehids-agent"
+	@echo "    $$ make all		# build swarms-agent"
 	@echo ""
 	@echo "# clean"
 	@echo "    $$ make clean		# wipe ./bin/ ./user/bytecode/ ./assets/"
@@ -262,7 +277,7 @@ clean:
 	$(CMD_RM) -f user/bytecode/*.d
 	$(CMD_RM) -f user/bytecode/*.o
 	$(CMD_RM) -f assets/ebpf_probe.go
-	$(CMD_RM) -f bin/ehids-agent
+	$(CMD_RM) -f bin/swarms-agent
 	$(CMD_RM) -f .check*
 
 .PHONY: $(KERN_OBJECTS)
@@ -290,7 +305,7 @@ assets: \
 build: \
 	.checkver_$(CMD_GO)
 #
-	CGO_ENABLED=0 $(CMD_GO) build -ldflags "-w -s" -o bin/ehids-agent .
+	CGO_ENABLED=0 $(CMD_GO) build -ldflags "-w -s" -o bin/swarms-agent .
 
 
 
@@ -300,7 +315,7 @@ build: \
 build_nocore: \
 	.checkver_$(CMD_GO)
 #
-	CGO_ENABLED=0 $(CMD_GO) build -ldflags "-w -s" -o bin/ehids-agent .
+	CGO_ENABLED=0 $(CMD_GO) build -ldflags "-w -s" -o bin/swarms-agent .
 
 
 .PHONY: ebpf_nocore

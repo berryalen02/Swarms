@@ -22,22 +22,22 @@ type MTCPSecProbe struct {
 }
 
 // 对象初始化
-func (this *MTCPSecProbe) Init(ctx context.Context, logger *log.Logger) error {
-	this.Module.Init(ctx, logger)
-	this.Module.SetChild(this)
-	this.eventMaps = make([]*ebpf.Map, 0, 2)
-	this.eventFuncMaps = make(map[*ebpf.Map]IEventStruct)
+func (TCPSec *MTCPSecProbe) Init(ctx context.Context, logger *log.Logger) error {
+	TCPSec.Module.Init(ctx, logger)
+	TCPSec.Module.SetChild(TCPSec)
+	TCPSec.eventMaps = make([]*ebpf.Map, 0, 2)
+	TCPSec.eventFuncMaps = make(map[*ebpf.Map]IEventStruct)
 	return nil
 }
 
-func (this *MTCPSecProbe) Start() error {
-	if err := this.start(); err != nil {
+func (TCPSec *MTCPSecProbe) Start() error {
+	if err := TCPSec.start(); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (this *MTCPSecProbe) start() error {
+func (TCPSec *MTCPSecProbe) start() error {
 
 	// fetch ebpf assets
 	javaBuf, err := assets.Asset("user/bytecode/sec_socket_connect_kern.o")
@@ -46,20 +46,20 @@ func (this *MTCPSecProbe) start() error {
 	}
 
 	// setup the managers
-	this.setupManagers()
+	TCPSec.setupManagers()
 
 	// initialize the bootstrap manager
-	if err := this.bpfManager.InitWithOptions(bytes.NewReader(javaBuf), this.bpfManagerOptions); err != nil {
+	if err := TCPSec.bpfManager.InitWithOptions(bytes.NewReader(javaBuf), TCPSec.bpfManagerOptions); err != nil {
 		return errors.Wrap(err, "couldn't init manager")
 	}
 
 	// start the bootstrap manager
-	if err := this.bpfManager.Start(); err != nil {
+	if err := TCPSec.bpfManager.Start(); err != nil {
 		return errors.Wrap(err, "couldn't start bootstrap manager")
 	}
 
 	// 加载map信息，map对应events decode表。
-	err = this.initDecodeFun()
+	err = TCPSec.initDecodeFun()
 	if err != nil {
 		return err
 	}
@@ -67,15 +67,15 @@ func (this *MTCPSecProbe) start() error {
 	return nil
 }
 
-func (this *MTCPSecProbe) Close() error {
-	if err := this.bpfManager.Stop(manager.CleanAll); err != nil {
+func (TCPSec *MTCPSecProbe) Close() error {
+	if err := TCPSec.bpfManager.Stop(manager.CleanAll); err != nil {
 		return errors.Wrap(err, "couldn't stop manager")
 	}
 	return nil
 }
 
-func (this *MTCPSecProbe) setupManagers() {
-	this.bpfManager = &manager.Manager{
+func (TCPSec *MTCPSecProbe) setupManagers() {
+	TCPSec.bpfManager = &manager.Manager{
 		Probes: []*manager.Probe{
 			{
 				Section:          "kprobe/security_socket_connect",
@@ -99,7 +99,7 @@ func (this *MTCPSecProbe) setupManagers() {
 		},
 	}
 
-	this.bpfManagerOptions = manager.Options{
+	TCPSec.bpfManagerOptions = manager.Options{
 		DefaultKProbeMaxActive: 512,
 
 		VerifierOptions: ebpf.CollectionOptions{
@@ -115,47 +115,47 @@ func (this *MTCPSecProbe) setupManagers() {
 	}
 }
 
-func (this *MTCPSecProbe) DecodeFun(em *ebpf.Map) (IEventStruct, bool) {
-	fun, found := this.eventFuncMaps[em]
+func (TCPSec *MTCPSecProbe) DecodeFun(em *ebpf.Map) (IEventStruct, bool) {
+	fun, found := TCPSec.eventFuncMaps[em]
 	return fun, found
 }
 
-func (this *MTCPSecProbe) initDecodeFun() error {
+func (TCPSec *MTCPSecProbe) initDecodeFun() error {
 	//eventMap 与解码函数映射
-	IPv4EventsMap, found, err := this.bpfManager.GetMap("ipv4_events")
+	IPv4EventsMap, found, err := TCPSec.bpfManager.GetMap("ipv4_events")
 	if err != nil {
 		return err
 	}
 	if !found {
 		return errors.New("cant found map:events")
 	}
-	this.eventMaps = append(this.eventMaps, IPv4EventsMap)
-	this.eventFuncMaps[IPv4EventsMap] = &EventIPV4{}
+	TCPSec.eventMaps = append(TCPSec.eventMaps, IPv4EventsMap)
+	TCPSec.eventFuncMaps[IPv4EventsMap] = &EventIPV4{}
 
-	IPv6EventsMap, found, err := this.bpfManager.GetMap("ipv6_events")
+	IPv6EventsMap, found, err := TCPSec.bpfManager.GetMap("ipv6_events")
 	if err != nil {
 		return err
 	}
 	if !found {
 		return errors.New("cant found map:events")
 	}
-	this.eventMaps = append(this.eventMaps, IPv6EventsMap)
-	this.eventFuncMaps[IPv6EventsMap] = &EventIPV6{}
+	TCPSec.eventMaps = append(TCPSec.eventMaps, IPv6EventsMap)
+	TCPSec.eventFuncMaps[IPv6EventsMap] = &EventIPV6{}
 
-	otherEventsMap, found, err := this.bpfManager.GetMap("other_socket_events")
+	otherEventsMap, found, err := TCPSec.bpfManager.GetMap("other_socket_events")
 	if err != nil {
 		return err
 	}
 	if !found {
 		return errors.New("cant found map:events")
 	}
-	this.eventMaps = append(this.eventMaps, otherEventsMap)
-	this.eventFuncMaps[otherEventsMap] = &EventOther{}
+	TCPSec.eventMaps = append(TCPSec.eventMaps, otherEventsMap)
+	TCPSec.eventFuncMaps[otherEventsMap] = &EventOther{}
 	return nil
 }
 
-func (this *MTCPSecProbe) Events() []*ebpf.Map {
-	return this.eventMaps
+func (TCPSec *MTCPSecProbe) Events() []*ebpf.Map {
+	return TCPSec.eventMaps
 }
 
 func init() {

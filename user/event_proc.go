@@ -87,8 +87,7 @@ func (fe *ForkProcEvent) Decode(payload []byte) (err error) {
 }
 
 func (fe *ForkProcEvent) String() string {
-	var s string
-	s = fmt.Sprintf(" fork event,childpid:%d, childtgid:%d,  parentpid:%d, parenttgid:%d,  grandparentpid:%d, grandparentgid:%d, cwd_level:%d, comm:%s, cmdline:%s, filepath:%s, start_time:%d, uid:%d,  gid:%d,uts_ium:%d,\n",
+	s := fmt.Sprintf(" fork event,childpid:%d, childtgid:%d,  parentpid:%d, parenttgid:%d,  grandparentpid:%d, grandparentgid:%d, cwd_level:%d, comm:%s, cmdline:%s, filepath:%s, start_time:%d, uid:%d,  gid:%d,uts_ium:%d,\n",
 		fe.ChildPid, fe.ChildTgid, fe.ParentPid, fe.ParentTgid, fe.GrandParentPid, fe.GrandParentTgid,
 		fe.Cwd_level, fe.Comm, fe.Cmdline, fe.Path, fe.Start_time, fe.Uid, fe.Gid, fe.UtsInum)
 	return s
@@ -98,7 +97,7 @@ func (fe *ForkProcEvent) Clone() IEventStruct {
 	return new(ForkProcEvent)
 }
 
-//反转函数
+// 反转函数
 func get_cwd(level uint32, str [10][16]byte) string {
 	if level == 0 {
 		return ""

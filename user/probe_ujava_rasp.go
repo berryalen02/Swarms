@@ -24,23 +24,23 @@ type MJavaRasp struct {
 }
 
 // 对象初始化
-func (this *MJavaRasp) Init(ctx context.Context, logger *log.Logger) error {
-	this.Module.Init(ctx, logger)
-	this.Module.SetChild(this)
-	this.eventMaps = make([]*ebpf.Map, 0, 2)
-	this.eventFuncMaps = make(map[*ebpf.Map]IEventStruct)
+func (mjava *MJavaRasp) Init(ctx context.Context, logger *log.Logger) error {
+	mjava.Module.Init(ctx, logger)
+	mjava.Module.SetChild(mjava)
+	mjava.eventMaps = make([]*ebpf.Map, 0, 2)
+	mjava.eventFuncMaps = make(map[*ebpf.Map]IEventStruct)
 	return nil
 }
 
-func (this *MJavaRasp) Start() error {
-	if err := this.start(); err != nil {
+func (mjava *MJavaRasp) Start() error {
+	if err := mjava.start(); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (this *MJavaRasp) start() error {
+func (mjava *MJavaRasp) start() error {
 
 	// fetch ebpf assets
 	javaBuf, err := assets.Asset("user/bytecode/java_exec_kern.o")
@@ -49,38 +49,38 @@ func (this *MJavaRasp) start() error {
 	}
 
 	// setup the managers
-	this.setupManagers()
+	mjava.setupManagers()
 
 	// initialize the bootstrap manager
-	if err := this.javaManager.InitWithOptions(bytes.NewReader(javaBuf), this.javaManagerOptions); err != nil {
+	if err := mjava.javaManager.InitWithOptions(bytes.NewReader(javaBuf), mjava.javaManagerOptions); err != nil {
 		return errors.Wrap(err, "couldn't init manager")
 	}
 
 	// start the bootstrap manager
-	if err := this.javaManager.Start(); err != nil {
+	if err := mjava.javaManager.Start(); err != nil {
 		return errors.Wrap(err, "couldn't start bootstrap manager")
 	}
 
 	// 加载map信息，map对应events decode表。
-	err = this.initDecodeFun()
+	err = mjava.initDecodeFun()
 	if err != nil {
 		return err
 	}
 
-	this.logger.Printf("process pid: %d\n", os.Getpid())
+	mjava.logger.Printf("process pid: %d\n", os.Getpid())
 
 	return nil
 }
 
-func (this *MJavaRasp) Close() error {
-	if err := this.javaManager.Stop(manager.CleanAll); err != nil {
+func (mjava *MJavaRasp) Close() error {
+	if err := mjava.javaManager.Stop(manager.CleanAll); err != nil {
 		return errors.Wrap(err, "couldn't stop manager")
 	}
 	return nil
 }
 
-func (this *MJavaRasp) setupManagers() {
-	this.javaManager = &manager.Manager{
+func (mjava *MJavaRasp) setupManagers() {
+	mjava.javaManager = &manager.Manager{
 		/*
 			openjdk version "1.8.0_292"
 			OpenJDK Runtime Environment (build 1.8.0_292-8u292-b10-0ubuntu1-b10)
@@ -106,7 +106,7 @@ func (this *MJavaRasp) setupManagers() {
 		},
 	}
 
-	this.javaManagerOptions = manager.Options{
+	mjava.javaManagerOptions = manager.Options{
 		// DefaultKProbeMaxActive is the maximum number of active kretprobe at a given time
 		DefaultKProbeMaxActive: 512,
 
@@ -132,41 +132,41 @@ func (this *MJavaRasp) setupManagers() {
 	}
 }
 
-func (this *MJavaRasp) Decode(em *ebpf.Map, b []byte) (result string, err error) {
-	es, found := this.DecodeFun(em)
+func (mjava *MJavaRasp) Decode(em *ebpf.Map, b []byte) (result string, err error) {
+	es, found := mjava.DecodeFun(em)
 	if !found {
 		err = fmt.Errorf("can't found decode function :%s, address:%p", em.String(), em)
 		return
 	}
-	result, err = this.EventsDecode(b, es)
+	result, err = mjava.EventsDecode(b, es)
 	if err != nil {
 		return
 	}
 	return
 }
 
-func (this *MJavaRasp) DecodeFun(em *ebpf.Map) (IEventStruct, bool) {
-	fun, found := this.eventFuncMaps[em]
+func (mjava *MJavaRasp) DecodeFun(em *ebpf.Map) (IEventStruct, bool) {
+	fun, found := mjava.eventFuncMaps[em]
 	return fun, found
 }
 
-func (this *MJavaRasp) initDecodeFun() error {
+func (mjava *MJavaRasp) initDecodeFun() error {
 	//eventMap 与解码函数映射
-	this.eventFuncMaps = make(map[*ebpf.Map]IEventStruct)
-	javaEventMap, found, err := this.javaManager.GetMap("jdk_execvpe_events")
+	mjava.eventFuncMaps = make(map[*ebpf.Map]IEventStruct)
+	javaEventMap, found, err := mjava.javaManager.GetMap("jdk_execvpe_events")
 	if err != nil {
 		return err
 	}
 	if !found {
 		return errors.New("cant found map:jdk_execvpe_events")
 	}
-	this.eventMaps = append(this.eventMaps, javaEventMap)
-	this.eventFuncMaps[javaEventMap] = &JavaJDKExecPeEvent{}
+	mjava.eventMaps = append(mjava.eventMaps, javaEventMap)
+	mjava.eventFuncMaps[javaEventMap] = &JavaJDKExecPeEvent{}
 	return nil
 }
 
-func (this *MJavaRasp) Events() []*ebpf.Map {
-	return this.eventMaps
+func (mjava *MJavaRasp) Events() []*ebpf.Map {
+	return mjava.eventMaps
 }
 
 func init() {

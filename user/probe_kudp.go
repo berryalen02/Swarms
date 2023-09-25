@@ -22,22 +22,22 @@ type MUDPProbe struct {
 }
 
 // 对象初始化
-func (this *MUDPProbe) Init(ctx context.Context, logger *log.Logger) error {
-	this.Module.Init(ctx, logger)
-	this.Module.SetChild(this)
-	this.eventMaps = make([]*ebpf.Map, 0, 2)
-	this.eventFuncMaps = make(map[*ebpf.Map]IEventStruct)
+func (udp *MUDPProbe) Init(ctx context.Context, logger *log.Logger) error {
+	udp.Module.Init(ctx, logger)
+	udp.Module.SetChild(udp)
+	udp.eventMaps = make([]*ebpf.Map, 0, 2)
+	udp.eventFuncMaps = make(map[*ebpf.Map]IEventStruct)
 	return nil
 }
 
-func (this *MUDPProbe) Start() error {
-	if err := this.start(); err != nil {
+func (udp *MUDPProbe) Start() error {
+	if err := udp.start(); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (this *MUDPProbe) start() error {
+func (udp *MUDPProbe) start() error {
 
 	// fetch ebpf assets
 	javaBuf, err := assets.Asset("user/bytecode/udp_lookup_kern.o")
@@ -46,20 +46,20 @@ func (this *MUDPProbe) start() error {
 	}
 
 	// setup the managers
-	this.setupManagers()
+	udp.setupManagers()
 
 	// initialize the bootstrap manager
-	if err := this.bpfManager.InitWithOptions(bytes.NewReader(javaBuf), this.bpfManagerOptions); err != nil {
+	if err := udp.bpfManager.InitWithOptions(bytes.NewReader(javaBuf), udp.bpfManagerOptions); err != nil {
 		return errors.Wrap(err, "couldn't init manager")
 	}
 
 	// start the bootstrap manager
-	if err := this.bpfManager.Start(); err != nil {
+	if err := udp.bpfManager.Start(); err != nil {
 		return errors.Wrap(err, "couldn't start bootstrap manager")
 	}
 
 	// 加载map信息，map对应events decode表。
-	err = this.initDecodeFun()
+	err = udp.initDecodeFun()
 	if err != nil {
 		return err
 	}
@@ -67,15 +67,15 @@ func (this *MUDPProbe) start() error {
 	return nil
 }
 
-func (this *MUDPProbe) Close() error {
-	if err := this.bpfManager.Stop(manager.CleanAll); err != nil {
+func (udp *MUDPProbe) Close() error {
+	if err := udp.bpfManager.Stop(manager.CleanAll); err != nil {
 		return errors.Wrap(err, "couldn't stop manager")
 	}
 	return nil
 }
 
-func (this *MUDPProbe) setupManagers() {
-	this.bpfManager = &manager.Manager{
+func (udp *MUDPProbe) setupManagers() {
+	udp.bpfManager = &manager.Manager{
 		Probes: []*manager.Probe{
 			{
 				Section:          "kprobe/udp_recvmsg",
@@ -96,7 +96,7 @@ func (this *MUDPProbe) setupManagers() {
 		},
 	}
 
-	this.bpfManagerOptions = manager.Options{
+	udp.bpfManagerOptions = manager.Options{
 		DefaultKProbeMaxActive: 512,
 
 		VerifierOptions: ebpf.CollectionOptions{
@@ -112,28 +112,28 @@ func (this *MUDPProbe) setupManagers() {
 	}
 }
 
-func (this *MUDPProbe) DecodeFun(em *ebpf.Map) (IEventStruct, bool) {
-	fun, found := this.eventFuncMaps[em]
+func (udp *MUDPProbe) DecodeFun(em *ebpf.Map) (IEventStruct, bool) {
+	fun, found := udp.eventFuncMaps[em]
 	return fun, found
 }
 
-func (this *MUDPProbe) initDecodeFun() error {
+func (udp *MUDPProbe) initDecodeFun() error {
 	//eventMap 与解码函数映射
-	DNSEventsMap, found, err := this.bpfManager.GetMap("dns_events")
+	DNSEventsMap, found, err := udp.bpfManager.GetMap("dns_events")
 	if err != nil {
 		return err
 	}
 	if !found {
 		return errors.New("cant found map:events")
 	}
-	this.eventMaps = append(this.eventMaps, DNSEventsMap)
-	this.eventFuncMaps[DNSEventsMap] = &UDPEvent{}
+	udp.eventMaps = append(udp.eventMaps, DNSEventsMap)
+	udp.eventFuncMaps[DNSEventsMap] = &UDPEvent{}
 
 	return nil
 }
 
-func (this *MUDPProbe) Events() []*ebpf.Map {
-	return this.eventMaps
+func (udp *MUDPProbe) Events() []*ebpf.Map {
+	return udp.eventMaps
 }
 
 func init() {

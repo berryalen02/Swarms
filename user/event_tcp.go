@@ -64,7 +64,7 @@ func (e *TCPEvent) Decode(payload []byte) (err error) {
 	}
 
 	err = binary.Read(buf, binary.LittleEndian, &e.UID)
-	return nil
+	return err
 }
 
 func (te *TCPEvent) String() string {

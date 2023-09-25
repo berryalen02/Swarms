@@ -22,22 +22,22 @@ type MTCPProbe struct {
 }
 
 // 对象初始化
-func (this *MTCPProbe) Init(ctx context.Context, logger *log.Logger) error {
-	this.Module.Init(ctx, logger)
-	this.Module.SetChild(this)
-	this.eventMaps = make([]*ebpf.Map, 0, 2)
-	this.eventFuncMaps = make(map[*ebpf.Map]IEventStruct)
+func (TCP *MTCPProbe) Init(ctx context.Context, logger *log.Logger) error {
+	TCP.Module.Init(ctx, logger)
+	TCP.Module.SetChild(TCP)
+	TCP.eventMaps = make([]*ebpf.Map, 0, 2)
+	TCP.eventFuncMaps = make(map[*ebpf.Map]IEventStruct)
 	return nil
 }
 
-func (this *MTCPProbe) Start() error {
-	if err := this.start(); err != nil {
+func (TCP *MTCPProbe) Start() error {
+	if err := TCP.start(); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (this *MTCPProbe) start() error {
+func (TCP *MTCPProbe) start() error {
 
 	// fetch ebpf assets
 	javaBuf, err := assets.Asset("user/bytecode/tcp_set_state_kern.o")
@@ -46,20 +46,20 @@ func (this *MTCPProbe) start() error {
 	}
 
 	// setup the managers
-	this.setupManagers()
+	TCP.setupManagers()
 
 	// initialize the bootstrap manager
-	if err := this.bpfManager.InitWithOptions(bytes.NewReader(javaBuf), this.bpfManagerOptions); err != nil {
+	if err := TCP.bpfManager.InitWithOptions(bytes.NewReader(javaBuf), TCP.bpfManagerOptions); err != nil {
 		return errors.Wrap(err, "couldn't init manager")
 	}
 
 	// start the bootstrap manager
-	if err := this.bpfManager.Start(); err != nil {
+	if err := TCP.bpfManager.Start(); err != nil {
 		return errors.Wrap(err, "couldn't start bootstrap manager")
 	}
 
 	// 加载map信息，map对应events decode表。
-	err = this.initDecodeFun()
+	err = TCP.initDecodeFun()
 	if err != nil {
 		return err
 	}
@@ -67,15 +67,15 @@ func (this *MTCPProbe) start() error {
 	return nil
 }
 
-func (this *MTCPProbe) Close() error {
-	if err := this.bpfManager.Stop(manager.CleanAll); err != nil {
+func (TCP *MTCPProbe) Close() error {
+	if err := TCP.bpfManager.Stop(manager.CleanAll); err != nil {
 		return errors.Wrap(err, "couldn't stop manager")
 	}
 	return nil
 }
 
-func (this *MTCPProbe) setupManagers() {
-	this.bpfManager = &manager.Manager{
+func (TCP *MTCPProbe) setupManagers() {
+	TCP.bpfManager = &manager.Manager{
 		Probes: []*manager.Probe{
 			{
 				Section:          "kprobe/tcp_set_state",
@@ -93,7 +93,7 @@ func (this *MTCPProbe) setupManagers() {
 		},
 	}
 
-	this.bpfManagerOptions = manager.Options{
+	TCP.bpfManagerOptions = manager.Options{
 		DefaultKProbeMaxActive: 512,
 
 		VerifierOptions: ebpf.CollectionOptions{
@@ -109,29 +109,29 @@ func (this *MTCPProbe) setupManagers() {
 	}
 }
 
-func (this *MTCPProbe) DecodeFun(em *ebpf.Map) (IEventStruct, bool) {
-	fun, found := this.eventFuncMaps[em]
+func (TCP *MTCPProbe) DecodeFun(em *ebpf.Map) (IEventStruct, bool) {
+	fun, found := TCP.eventFuncMaps[em]
 	return fun, found
 }
 
-func (this *MTCPProbe) initDecodeFun() error {
+func (TCP *MTCPProbe) initDecodeFun() error {
 	//eventMap 与解码函数映射
-	this.eventFuncMaps = make(map[*ebpf.Map]IEventStruct)
+	TCP.eventFuncMaps = make(map[*ebpf.Map]IEventStruct)
 	//TCPEvents *ebpf.Map `ebpf:"events"`
-	TCPEventsMap, found, err := this.bpfManager.GetMap("events")
+	TCPEventsMap, found, err := TCP.bpfManager.GetMap("events")
 	if err != nil {
 		return err
 	}
 	if !found {
 		return errors.New("cant found map:events")
 	}
-	this.eventMaps = append(this.eventMaps, TCPEventsMap)
-	this.eventFuncMaps[TCPEventsMap] = &TCPEvent{}
+	TCP.eventMaps = append(TCP.eventMaps, TCPEventsMap)
+	TCP.eventFuncMaps[TCPEventsMap] = &TCPEvent{}
 	return nil
 }
 
-func (this *MTCPProbe) Events() []*ebpf.Map {
-	return this.eventMaps
+func (TCP *MTCPProbe) Events() []*ebpf.Map {
+	return TCP.eventMaps
 }
 
 func init() {

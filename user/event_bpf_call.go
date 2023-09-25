@@ -50,38 +50,38 @@ type BpfCallEvent struct {
 	ProcEvent
 }
 
-func (this *BpfCallEvent) Decode(data []byte) error {
+func (e *BpfCallEvent) Decode(data []byte) error {
 	cmd := BPFCmd(ByteOrder.Uint32(data[0:4]))
-	this.Type = cmd.String()
-	this.Pid = uint32(ByteOrder.Uint32(data[8:12]))
-	this.Tgid = uint32(ByteOrder.Uint32(data[12:16]))
-	this.NsPid = uint32(ByteOrder.Uint32(data[16:20]))
-	this.NsTgid = uint32(ByteOrder.Uint32(data[20:24]))
-	this.PPid = uint32(ByteOrder.Uint32(data[24:28]))
-	this.PTgid = uint32(ByteOrder.Uint32(data[28:32]))
-	this.NsPPid = uint32(ByteOrder.Uint32(data[32:36]))
-	this.NsPTgid = uint32(ByteOrder.Uint32(data[36:40]))
-	this.PPPid = uint32(ByteOrder.Uint32(data[40:44]))
-	this.PPTgid = uint32(ByteOrder.Uint32(data[44:48]))
-	this.NsPPPid = uint32(ByteOrder.Uint32(data[48:52]))
-	this.NsPPTgid = uint32(ByteOrder.Uint32(data[52:56]))
-	this.Uid = uint32(ByteOrder.Uint32(data[56:60]))
-	this.Euid = uint32(ByteOrder.Uint32(data[60:64]))
-	this.Gid = uint32(ByteOrder.Uint32(data[64:68]))
-	this.Egid = uint32(ByteOrder.Uint32(data[68:72]))
-	this.UtsInum = uint32(ByteOrder.Uint32(data[72:76]))
-	this.Start_time = uint64(ByteOrder.Uint64(data[80:88]))
-	this.Comm = string(bytes.TrimRight(data[88:104], "\x00"))
-	this.Cmdline = string(bytes.Replace(bytes.TrimRight(data[104:360], "\x00"), []byte("\x00"), []byte("\x20"), -1))
-	this.UtsName = string(bytes.TrimRight(data[360:424], "\x00"))
+	e.Type = cmd.String()
+	e.Pid = uint32(ByteOrder.Uint32(data[8:12]))
+	e.Tgid = uint32(ByteOrder.Uint32(data[12:16]))
+	e.NsPid = uint32(ByteOrder.Uint32(data[16:20]))
+	e.NsTgid = uint32(ByteOrder.Uint32(data[20:24]))
+	e.PPid = uint32(ByteOrder.Uint32(data[24:28]))
+	e.PTgid = uint32(ByteOrder.Uint32(data[28:32]))
+	e.NsPPid = uint32(ByteOrder.Uint32(data[32:36]))
+	e.NsPTgid = uint32(ByteOrder.Uint32(data[36:40]))
+	e.PPPid = uint32(ByteOrder.Uint32(data[40:44]))
+	e.PPTgid = uint32(ByteOrder.Uint32(data[44:48]))
+	e.NsPPPid = uint32(ByteOrder.Uint32(data[48:52]))
+	e.NsPPTgid = uint32(ByteOrder.Uint32(data[52:56]))
+	e.Uid = uint32(ByteOrder.Uint32(data[56:60]))
+	e.Euid = uint32(ByteOrder.Uint32(data[60:64]))
+	e.Gid = uint32(ByteOrder.Uint32(data[64:68]))
+	e.Egid = uint32(ByteOrder.Uint32(data[68:72]))
+	e.UtsInum = uint32(ByteOrder.Uint32(data[72:76]))
+	e.Start_time = uint64(ByteOrder.Uint64(data[80:88]))
+	e.Comm = string(bytes.TrimRight(data[88:104], "\x00"))
+	e.Cmdline = string(bytes.Replace(bytes.TrimRight(data[104:360], "\x00"), []byte("\x00"), []byte("\x20"), -1))
+	e.UtsName = string(bytes.TrimRight(data[360:424], "\x00"))
 	return nil
 }
 
-func (this *BpfCallEvent) String() string {
-	s := fmt.Sprintf("Cmd:%s, PID:%d, UID:%d, Comm:%s, cmdline:%s, utsName:%s", this.Type, this.Pid, this.Uid, this.Comm, this.Cmdline, this.UtsName)
+func (e *BpfCallEvent) String() string {
+	s := fmt.Sprintf("Cmd:%s, PID:%d, UID:%d, Comm:%s, cmdline:%s, utsName:%s", e.Type, e.Pid, e.Uid, e.Comm, e.Cmdline, e.UtsName)
 	return s
 }
 
-func (this *BpfCallEvent) Clone() IEventStruct {
+func (e *BpfCallEvent) Clone() IEventStruct {
 	return new(BpfCallEvent)
 }
